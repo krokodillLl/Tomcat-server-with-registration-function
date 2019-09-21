@@ -47,5 +47,8 @@ public class UserProfile {
 
     public void setEcho(String echo) {
         this.echo = echo;
+        if(this.echo.equals(this.key)) {
+            this.isCertified = true;
+        }
     }
 }
