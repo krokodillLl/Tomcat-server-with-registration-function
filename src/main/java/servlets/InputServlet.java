@@ -2,10 +2,13 @@ package servlets;
 
 import accounts.AccountService;
 
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.sql.*;
 
 @WebServlet(name = "servlets.InputServlet")
@@ -64,6 +67,10 @@ public class InputServlet extends HttpServlet {
     public boolean userAuthentication(String login, String password) {
         String url = "jdbc:postgresql://localhost:5432/accounts";
         String sql = "SELECT * FROM tomcat WHERE login = '"+ login +"'";
+        String[] data = getDataForPostgre();
+        if(data.length == 0) {
+            throw new NullPointerException();
+        }
 
         try {
             Class.forName("org.postgresql.Driver");
@@ -73,7 +80,7 @@ public class InputServlet extends HttpServlet {
 
         try {
             Connection conn = DriverManager.getConnection(url,
-                    "UserName", "Password");
+                    data[1], data[2]);
 
             Statement statement = conn.createStatement();
             ResultSet rs = statement.executeQuery(sql);
@@ -97,5 +104,25 @@ public class InputServlet extends HttpServlet {
             e.printStackTrace();
         }
         return false;
+    }
+
+    public String[] getDataForPostgre(){
+        ServletContext context = getServletContext();
+        try(BufferedReader reader = new BufferedReader(new InputStreamReader(
+                context.getResourceAsStream("/WEB-INF/data/accounts.txt")))) {
+            String[] data;
+            while (reader.ready()) {
+                String str = reader.readLine();
+                if (str.contains("postgre")) {
+                    data = str.split(" ");
+                    reader.close();
+                    return data;
+                }
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

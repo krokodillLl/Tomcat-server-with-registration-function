@@ -4,8 +4,9 @@ import accounts.AccountService;
 import accounts.UserProfile;
 import mail.EmailSender;
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+import java.io.*;
 import java.sql.*;
 
 
@@ -57,7 +58,12 @@ public class AuthorisationServlet extends javax.servlet.http.HttpServlet {
         AccountService.getInstance().addNewUser(new UserProfile(login, password, email));
 
         String key = AccountService.getInstance().getUserByLogin(login).getKey();
-        EmailSender sender = new EmailSender("SomeEmail@gmail.com", "SomePassword");
+
+        String[] data = getDataForEmail();
+        if(data.length == 0) {
+            throw new NullPointerException();
+        }
+        EmailSender sender = new EmailSender(data[1], data[2]);
         sender.send("localhost",  "Please follow the link \r\n http://localhost:8080/authorisation?key=" + key + "&login=" + login, email);
 
     }
@@ -67,6 +73,10 @@ public class AuthorisationServlet extends javax.servlet.http.HttpServlet {
         String password = AccountService.getInstance().getUserByLogin(login).getPassword();
         String email = AccountService.getInstance().getUserByLogin(login).getEmail();
         String sql = "INSERT INTO tomcat (login, password, email) VALUES (?,?,?)";
+        String[] data = getDataForPostgre();
+        if(data.length == 0) {
+            throw new NullPointerException();
+        }
 
         try {
             Class.forName("org.postgresql.Driver");
@@ -76,7 +86,7 @@ public class AuthorisationServlet extends javax.servlet.http.HttpServlet {
 
         try {
             Connection conn = DriverManager.getConnection(url,
-                    "UserName", "Password");
+                    data[1], data[2]);
 
 
 
@@ -93,5 +103,46 @@ public class AuthorisationServlet extends javax.servlet.http.HttpServlet {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    public String[] getDataForEmail(){
+        ServletContext context = getServletContext();
+
+        try(BufferedReader reader = new BufferedReader(new InputStreamReader(
+                context.getResourceAsStream("/WEB-INF/data/accounts.txt")))) {
+            String[] data;
+            while (reader.ready()) {
+                String str = reader.readLine();
+                if (str.contains("gmail")) {
+                    data = str.split(" ");
+                    reader.close();
+                    return data;
+                }
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public String[] getDataForPostgre(){
+        ServletContext context = getServletContext();
+        try(BufferedReader reader = new BufferedReader(new InputStreamReader(
+                context.getResourceAsStream("/WEB-INF/data/accounts.txt")))) {
+            String[] data;
+            while (reader.ready()) {
+                String str = reader.readLine();
+                if (str.contains("postgre")) {
+                    data = str.split(" ");
+                    reader.close();
+                    return data;
+                }
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }
